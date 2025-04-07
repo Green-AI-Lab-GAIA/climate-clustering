@@ -1,4 +1,3 @@
-data/
-.venv
-swav/old_code/
-msn_code/checkpoint
+secrets/*
+data/raw/*
+.env
