@@ -75,12 +75,23 @@ def download_brasil_data_from_onedrive(variables,start_end_dates):
                             local_path="data/raw/")
             
     
-# # download params 
-# start_end = [[19610101,19801231], 
-#             [19810101,20001231],  
-#             [20010101,20240320]] 
+if __name__ == "__main__":
+    
+    # Define the area for Brazil
+    area = [5.3, -73.9, -33.9, -34.9]  # [north, west, south, east]
+    
+    # Download ERA5 data
+    download_era5_data(area)
+    
+    # Define the variables and date ranges for Brasil data
+    variables = ["pr", "Tmin", "Tmax"]
+    start_end_dates = [
+        [19610101, 19801231],
+        [19810101, 20001231],
+        [20010101, 20240320]
+    ]
+    
+    # Download Brasil data from OneDrive
+    download_brasil_data_from_onedrive(variables, start_end_dates)  
 
-# variables = ["pr","Tmin","Tmax"]
-
-# area = [5.3, -73.9, -33.9, -34.9]
 

@@ -131,6 +131,7 @@ model = AuroraHighRes(
     # Use manually downloaded and regridded static variables.
     surf_stats={"z": (-3.270407e03, 6.540335e04)},
 )
+
 model.load_checkpoint("microsoft/aurora", "aurora-0.1-finetuned.ckpt")
 
 model.eval()
