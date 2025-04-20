@@ -1,6 +1,3 @@
 [submodule "msn"]
 	path = msn
 	url = git@github.com:Green-AI-Lab-GAIA/msn.git
-[submodule "share-point-data-repository"]
-	path = share-point-data-repository
-	url = git@github.com:luizfernando608/share-point-data-repository.git
