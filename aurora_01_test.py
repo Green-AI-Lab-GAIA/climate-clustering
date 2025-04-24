@@ -109,14 +109,14 @@ batch = Batch(
         "slt": load_surf("slt", "slt")[0, 0],
         "lsm": load_surf("lsm", "lsm")[0, 0],
     },
-    atmos_vars={},
-    # atmos_vars={
-    #     "t": load_atmos("t"),
-    #     "u": load_atmos("u"),
-    #     "v": load_atmos("v"),
-    #     "q": load_atmos("q"),
-    #     "z": load_atmos("z"),
-    # },
+    # atmos_vars={},
+    atmos_vars={
+        "t": load_atmos("t"),
+        "u": load_atmos("u"),
+        "v": load_atmos("v"),
+        "q": load_atmos("q"),
+        "z": load_atmos("z"),
+    },
     metadata=Metadata(
         lat=torch.from_numpy(ds.latitude.values),
         lon=torch.from_numpy(ds.longitude.values),
@@ -138,7 +138,7 @@ model.eval()
 model = model.to("cuda")
 
 with torch.inference_mode():
-    preds = [pred.to("cpu") for pred in rollout(model, batch, steps=2)]
+    preds = [pred.to("cpu") for pred in rollout(model, batch, steps=1)]
 
 model = model.to("cpu")
 # %%

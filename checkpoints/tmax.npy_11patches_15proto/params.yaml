@@ -1,0 +1,31 @@
+data:
+  adjust_scale: false
+  crop_sizes:
+  - 11
+  - 8
+  dataset_name: tmax.npy
+  filter_data: false
+  image_folder: ../data/
+  low_info_thresh: null
+  max_scales:
+  - 1.0
+  - 0.5
+  min_scales:
+  - 0.8
+  - 0.2
+  n_hr_views: 2
+  n_lr_views: 6
+  patch_size: 11
+  patch_stride: 8
+training:
+  backbone_model: resnet18
+  batch_size: 512
+  checkpoints_file_path: ../checkpoints/
+  device: cuda
+  learning_rate: 0.0001
+  max_patience: 2
+  min_epochs: 5
+  n_features_swav: 128
+  n_prototypes: 15
+  sinkhorn_epsilon: 0.03
+  weights_file_name: null

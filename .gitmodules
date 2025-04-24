@@ -1,3 +1,6 @@
 [submodule "msn"]
 	path = msn
 	url = git@github.com:Green-AI-Lab-GAIA/msn.git
+[submodule "swav"]
+	path = swav
+	url = git@github.com:Green-AI-Lab-GAIA/swav.git

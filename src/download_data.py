@@ -3,7 +3,7 @@
 import cdsapi
 import os 
 
-from src.sharepoint_connection import SharePointConnection
+from sharepoint_connection import SharePointConnection
 
 from pathlib import Path
 import os
