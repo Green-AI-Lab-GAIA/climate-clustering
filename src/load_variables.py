@@ -51,26 +51,26 @@ def load_brasil_surf_var(variables, start_end_dates= [[19610101,19801231], [1981
                 raise FileNotFoundError(f"File not found: {file_path}")
             
             var_name = next(iter(cur_df.data_vars))
-            data.append(cur_df[var_name].values)
+            data.append(cur_df[var_name].values[:100])
             
-            if not len(metadata):
-                metadata["lat"] = torch.from_numpy(cur_df['latitude'].values)
-                metadata["lon"] = torch.from_numpy(cur_df['longitude'].values)
+            # if not len(metadata):
+            #     metadata["lat"] = torch.from_numpy(cur_df['latitude'].values)
+            #     metadata["lon"] = torch.from_numpy(cur_df['longitude'].values)
             
             if append_time:
-                time_list.append(cur_df['time'].values)
+                time_list.append(cur_df['time'].values[:100])
 
         append_time = False
         metadata["time"] = tuple(np.concatenate(time_list, axis=0))
         
         data = np.concatenate(data, axis=0)
         
-        data = data[None] # Insert a batch dimension.
+        # data = data[None] # Insert a batch dimension.
        
         data =  torch.from_numpy(data)
         data = torch.flip(data,[2]) # Flip the vertical axis.
         
-        vars[var_name] = data
+        vars[var_name] = data[:,:-1,:]
 
     mask = vars[variables[0]][0][0]
     mask = torch.where(~torch.isnan(mask), 1,0)
@@ -92,18 +92,25 @@ def load_era5_static_variables(variables, area=[5.3, -73.9, -33.9, -34.9],mask=N
     """
     
     vars = {}
+    metadata = {}
+    
     for var in variables:
         
         file_path = f"data/raw/{var}.area-subset.{area[0]}.{area[3]}.{area[2]}.{area[1]}.nc"
         cur_var = xr.open_dataset(file_path, engine="netcdf4")
         
+        if not len(metadata): 
+            metadata['lon'] = torch.from_numpy(cur_var['longitude'].values)
+            metadata['lat'] = torch.from_numpy(cur_var['latitude'].values[:-1])
+            
         var_name = next(iter(cur_var.variables)) #get the variable name
-        cur_var =torch.from_numpy(cur_var[var_name].values[0])
+        cur_var =torch.from_numpy(cur_var[var_name].values[0][:-1,:])
          
         if mask is not None:
             cur_var = torch.where(mask == 1, cur_var, torch.nan)
            
         vars[str(var_name)] =  cur_var
         
-    return vars
+
+    return vars, metadata
 
