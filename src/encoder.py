@@ -25,10 +25,7 @@ import math
 from typing import Optional
 import torch.nn.functional as F
 from timm.models.layers.helpers import to_2tuple
-
 __all__ = ["Perceiver3DEncoder","LevelPatchEmbed"]
-
-
 
 class LevelPatchEmbed(nn.Module):
     """At either the surface or at a single pressure level, maps all variables into a single
