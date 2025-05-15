@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from aurora import Batch, Metadata
-from aurora import AuroraHighRes, rollout
+from base_models.aurora import Batch, Metadata
+from base_models.aurora import AuroraHighRes, rollout
 
 #%%
 # Data will be downloaded here.
@@ -137,8 +137,10 @@ model.load_checkpoint("microsoft/aurora", "aurora-0.1-finetuned.ckpt")
 model.eval()
 model = model.to("cuda")
 
-with torch.inference_mode():
-    preds = [pred.to("cpu") for pred in rollout(model, batch, steps=1)]
+model.forward(batch.to("cuda"))
 
-model = model.to("cpu")
+# with torch.inference_mode():
+#     preds = [pred.to("cpu") for pred in rollout(model, batch, steps=1)]
+
+# model = model.to("cpu")
 # %%

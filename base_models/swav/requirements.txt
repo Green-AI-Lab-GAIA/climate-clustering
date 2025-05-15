@@ -1,0 +1,6 @@
+PyYAML==6.0.2
+numpy==2.1.3
+pillow==11.0.0
+torch==2.6.0
+torchvision==0.21.0
+lightly==1.5.8
