@@ -182,10 +182,13 @@ class Weather3DEncoder(nn.Module):
 
         B, _, H, W = x_surf.shape
 
-        lat = x_surf[:,5,:,:].transpose(1,2)[:,0]
-        lon = x_surf[:,6,0]
-        time = x_surf[:,7,0,0]
-        x_surf = x_surf[:,:5,:,:] 
+        if x_surf.shape[1] == 8:
+            lat = x_surf[:,5,:,:].transpose(1,2)[:,0]
+            lon = x_surf[:,6,0]
+            time = x_surf[:,7,0,0]
+            x_surf = x_surf[:,:5,:,:] 
+        else:
+            lat, lon, time = None, None, None
 
         # Patch embed the surface level.
         x_surf = self.surf_token_embeds(x_surf, self.surf_vars)  # (B, L, D)
@@ -198,34 +201,49 @@ class Weather3DEncoder(nn.Module):
 
         x = x_surf.unsqueeze(1) # (B, 1, L, D) 
 
-        # Add position and scale embeddings to the 3D tensor.
-        pos_encode, scale_encode = pos_scale_enc(
-            self.embed_dim,
-            lat,
-            lon,
-            self.patch_size,
-            pos_expansion=pos_expansion,
-            scale_expansion=scale_expansion,
-        )
 
-        # Encodings are (L, D).
-        pos_encode = self.pos_embed(pos_encode[None, None, :].to(dtype=dtype))
-        scale_encode = self.scale_embed(scale_encode[None, None, :].to(dtype=dtype))
-        x = x + pos_encode + scale_encode
+        # Add position and scale embeddings to the 3D tensor.
+        # Compute pos_encode and scale_encode for each sample in the batch
+        if lat is not None or lon is not None:
+            pos_encodes = []
+            scale_encodes = []
+
+            for b in range(B):
+
+                pos_encode, scale_encode = pos_scale_enc(
+                self.embed_dim,
+                lat[b],
+                lon[b],
+                self.patch_size,
+                pos_expansion=pos_expansion,
+                scale_expansion=scale_expansion,
+                )
+                pos_encodes.append(pos_encode)
+                scale_encodes.append(scale_encode)
+
+            pos_encode = torch.stack(pos_encodes, dim=0)  # (B, L, D)
+            scale_encode = torch.stack(scale_encodes, dim=0)  # (B, L, D)
+
+            # Encodings are (L, D).
+            pos_encode = self.pos_embed(pos_encode[:, None, :].to(dtype=dtype))
+            scale_encode = self.scale_embed(scale_encode[:, None, :].to(dtype=dtype))
+            x = x + pos_encode + scale_encode
 
         # Flatten the tokens.
         x = x.reshape(B, -1, self.embed_dim)  # (B, C + 1, L, D) to (B, L', D)
 
-        # Add absolute time embedding.
-        absolute_times_list = [t.item().astype('datetime64[s]').astype(datetime).timestamp() / 3600 for t in time]  # Times in hours
-        absolute_times = torch.tensor(absolute_times_list, dtype=torch.float32, device=x.device)
-        absolute_time_encode = absolute_time_expansion(absolute_times, self.embed_dim)
-        absolute_time_embed = self.absolute_time_embed(absolute_time_encode.to(dtype=dtype))
-        x = x + absolute_time_embed.unsqueeze(1)  # (B, L, D) + (B, 1, D)
+        if time is not None:
+
+            # Add absolute time embedding.
+            # absolute_times_list = [t.item().astype('datetime64[s]').astype(datetime).timestamp() / 3600 for t in time]  # Times in hours
+            absolute_times = torch.tensor(time, dtype=torch.float32, device=x.device)
+            absolute_time_encode = absolute_time_expansion(absolute_times, self.embed_dim)
+            absolute_time_embed = self.absolute_time_embed(absolute_time_encode.to(dtype=dtype))
+            x = x + absolute_time_embed.unsqueeze(1)  # (B, L, D) + (B, 1, D)
 
         x = self.pos_drop(x)
 
-        #withou time and scale embeddings
+        #temporary fix for 3d encoder (SWAV)
         x= x.squeeze(1)\
             .permute(0, 2, 1)
         

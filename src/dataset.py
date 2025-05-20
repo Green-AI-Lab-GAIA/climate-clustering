@@ -1,6 +1,7 @@
 #%%
 import numpy as np
 import torch
+from datetime import  datetime
 from torch.utils.data import Dataset
 from aurora import Batch, Metadata
 
@@ -23,7 +24,7 @@ class SurfWeatherDataset(Dataset):
             metadata=Metadata(
                 lat=lat,
                 lon=lon,
-                time=time,
+                time=[t.astype('datetime64[s]').astype(datetime).timestamp() / 3600 for t in time] ,
                 atmos_levels=(0,),
             ),
         ).type(torch.float32)\

@@ -20,7 +20,7 @@ class SwaV(nn.Module):
         backbone = Weather3DEncoder(variable_names,patch_size=4)
 
         with torch.no_grad():
-            n_features_backbone = backbone(torch.randn(batch_size, len(variable_names), input_size, input_size)).flatten(start_dim=1).shape[1]
+            n_features_backbone = backbone(torch.randn(batch_size, len(variable_names)-3, input_size, input_size)).flatten(start_dim=1).shape[1]
 
         self.backbone = backbone
 

@@ -24,6 +24,7 @@ class MultiCropTranform(MultiViewTransform):
     ):
         crop_transforms = []
         for i in range(len(crop_sizes)):
+            
             random_resized_crop = T.RandomResizedCrop(
                 crop_sizes[i], scale=(crop_min_scales[i], crop_max_scales[i])
             )

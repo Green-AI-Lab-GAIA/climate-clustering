@@ -1,2 +1,10 @@
 Total images: 142500
 ln(proto): 3.4012
+Total images: 28500
+ln(proto): 3.4012
+epoch: 0001, loss: 1.53414 (*)
+epoch: 0002, loss: 1.24892 (*)
+epoch: 0003, loss: 0.64935 (*)
+epoch: 0004, loss: 0.52047 (*)
+epoch: 0005, loss: 0.39983 (*)
+epoch: 0006, loss: 0.37133 (*)
