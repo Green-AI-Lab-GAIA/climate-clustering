@@ -1,4 +1,5 @@
 criterion:
+  batch_size: 16
   ent_weight: 0.0
   final_sharpen: 0.25
   me_max: true
@@ -6,20 +7,19 @@ criterion:
   num_proto: 60
   start_sharpen: 0.25
   temperature: 0.1
-  batch_size: 16
   use_ent: true
   use_sinkhorn: true
 data:
   color_jitter_strength: 0.5
-  pin_mem: true
-  num_workers: 10
+  focal_size: 16
+  focal_views: 10
   image_folder: null
   label_smoothing: 0.0
+  num_workers: 10
   patch_drop: 0.15
+  pin_mem: true
   rand_size: 32
-  focal_size: 16
   rand_views: 1
-  focal_views: 10
   root_path: null
 logging:
   folder: checkpoint/msn_os_logs/

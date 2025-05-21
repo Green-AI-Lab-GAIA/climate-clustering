@@ -6,7 +6,7 @@ import torch
 from pathlib import Path
 import os
 
-project_root = Path(__file__).resolve().parent.parent
+project_root = Path(__file__).resolve().parent.parent.parent
 current_working_dir = Path.cwd().resolve()
 
 if current_working_dir != project_root:
