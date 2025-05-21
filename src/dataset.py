@@ -5,7 +5,7 @@ from datetime import  datetime
 from torch.utils.data import Dataset
 from aurora import Batch, Metadata
 
-from src.load_variables import load_brasil_surf_var, load_era5_static_variables
+from src.data.load_variables import load_brasil_surf_var, load_era5_static_variables
 
 class SurfWeatherDataset(Dataset):
     def __init__(self, surf_vars, static_vars, surf_stats, patch_size=40, patch_stride=20,n_samples=100):
