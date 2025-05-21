@@ -8,6 +8,8 @@ from sharepoint_connection import SharePointConnection
 from pathlib import Path
 import os
 
+import numpy as np
+
 project_root = Path(__file__).resolve().parent.parent.parent
 current_working_dir = Path.cwd().resolve()
 
@@ -46,12 +48,15 @@ def download_era5_data(dataset_name, area, path="data/raw/era5/",years_to_downlo
             },
             str(current_dataset),
         )
-    print("Static variables downloaded!")
 
-    for year in years_to_download:
-        
-        current_dataset = download_path  / f"{dataset_name}-{year}-surface-level.nc"
-        
+        print("Static variables downloaded!")
+
+
+    for year_list in years_to_download:
+
+        start, end = year_list[0], year_list[-1]
+        current_dataset = download_path  / f"{dataset_name}-{start}-{end}-surface-level.nc"
+
         if not (current_dataset).exists():
             client.retrieve(
                 "reanalysis-era5-single-levels",
@@ -63,7 +68,7 @@ def download_era5_data(dataset_name, area, path="data/raw/era5/",years_to_downlo
                         "10m_v_component_of_wind",
                         "mean_sea_level_pressure",
                     ],
-                    "year": year,
+                    "year": year_list,
                     "month": ["01", "02", "03","04", "05", "06",
                                 "07", "08", "09","10", "11", "12"],
                     "day":  [ "01", "02", "03","04", "05", "06",
@@ -78,12 +83,11 @@ def download_era5_data(dataset_name, area, path="data/raw/era5/",years_to_downlo
                 str(current_dataset),
             )
 
-    print("Surface-level variables downloaded!")
+        print("Surface-level variables downloaded for years:", year_list)
 
-    for year in years_to_download:
-        
-        current_dataset = download_path  / f"{dataset_name}-{year}-atmospheric.nc"
-        
+
+        current_dataset = download_path  / f"{dataset_name}-{start}-{end}-atmospheric.nc"
+
         if not (current_dataset).exists():
             client.retrieve(
                 "reanalysis-era5-pressure-levels",
@@ -101,7 +105,7 @@ def download_era5_data(dataset_name, area, path="data/raw/era5/",years_to_downlo
                         "300","400","500","600","700",
                         "850","925","1000",
                     ],
-                    "year": year,
+                    "year": year_list,
                     "month": ["01", "02", "03","04", "05", "06",
                                 "07", "08", "09","10", "11", "12"],
                     "day":  [ "01", "02", "03","04", "05", "06",
@@ -115,8 +119,9 @@ def download_era5_data(dataset_name, area, path="data/raw/era5/",years_to_downlo
                 },
                 str(current_dataset),
             )
-            
-    print("Atmospheric variables downloaded!")
+                
+        print("Atmospheric variables downloaded for years:", year_list)
+        print('\n')
 
 def download_era5_static_data(area, path="data/raw/"):
     """
@@ -183,10 +188,18 @@ if __name__ == "__main__":
 #     # Define the area for Brazil
     area = [5.3, -73.9, -33.9, -34.9]  # [north, west, south, east]
 
+    # years_to_download=[str(i) for i in range(1980, 2024)]
+    years_to_download = [
+                        # ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987','1988', '1989'],
+                        ['1990','1991', '1992', '1993', '1994', '1995', '1996', '1997', '1998','1999'],
+                        ['2000', '2001','2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009',],
+                        ['2010','2011', '2012','2013', '2014', '2015', '2016', '2017', '2018', '2019'], 
+                        ['2020', '2021', '2022', '2023','2024']]
+
     download_era5_data(dataset_name="brasil",
                     area=area,
                     path="data/raw/era5/",
-                    years_to_download=[str(i) for i in range(1980, 2024)])
+                    years_to_download=years_to_download)
 
 
 #     # Download ERA5 data
