@@ -24,86 +24,98 @@ def download_era5_data(dataset_name, area, path="data/raw/era5/",years_to_downlo
         url="https://cds.climate.copernicus.eu/api",
         key="b0474ce3-c4ed-4747-b666-66dcca14d8ea"
     )
-
-    client.retrieve(
-        "reanalysis-era5-single-levels",
-        {
-            "product_type": "reanalysis",
-            "variable": [
-                "geopotential",
-                "land_sea_mask",
-                "soil_type",
-            ],
-            "year": "2023",
-            "month": "01",
-            "day": "01",
-            "time": "00:00",
-            "format": "netcdf",
-            "area": area,
-        },
-        str(download_path  / f"{dataset_name}-static.nc"),
-    )
-    print("Static variables downloaded!")
-
-    for year in years_to_download:
+    
+    current_dataset = download_path  / f"{dataset_name}-static.nc"
+    
+    if not (current_dataset).exists():
         client.retrieve(
             "reanalysis-era5-single-levels",
             {
                 "product_type": "reanalysis",
                 "variable": [
-                    "2m_temperature",
-                    "10m_u_component_of_wind",
-                    "10m_v_component_of_wind",
-                    "mean_sea_level_pressure",
+                    "geopotential",
+                    "land_sea_mask",
+                    "soil_type",
                 ],
-                "year": year,
-                "month": ["01", "02", "03","04", "05", "06",
-                            "07", "08", "09","10", "11", "12"],
-                "day":  [ "01", "02", "03","04", "05", "06",
-                            "07", "08", "09","10", "11", "12",
-                            "13", "14", "15","16", "17", "18",
-                            "19", "20", "21","22", "23", "24",
-                            "25", "26", "27","28", "29", "30","31"],
-                "time": ["00:00", "06:00", "12:00", "18:00"],
+                "year": "2023",
+                "month": "01",
+                "day": "01",
+                "time": "00:00",
                 "format": "netcdf",
                 "area": area,
             },
-            str(download_path  / f"{dataset_name}-{year}-surface-level.nc"),
+            str(current_dataset),
         )
+    print("Static variables downloaded!")
+
+    for year in years_to_download:
+        
+        current_dataset = download_path  / f"{dataset_name}-{year}-surface-level.nc"
+        
+        if not (current_dataset).exists():
+            client.retrieve(
+                "reanalysis-era5-single-levels",
+                {
+                    "product_type": "reanalysis",
+                    "variable": [
+                        "2m_temperature",
+                        "10m_u_component_of_wind",
+                        "10m_v_component_of_wind",
+                        "mean_sea_level_pressure",
+                    ],
+                    "year": year,
+                    "month": ["01", "02", "03","04", "05", "06",
+                                "07", "08", "09","10", "11", "12"],
+                    "day":  [ "01", "02", "03","04", "05", "06",
+                                "07", "08", "09","10", "11", "12",
+                                "13", "14", "15","16", "17", "18",
+                                "19", "20", "21","22", "23", "24",
+                                "25", "26", "27","28", "29", "30","31"],
+                    "time": ["00:00", "06:00", "12:00", "18:00"],
+                    "format": "netcdf",
+                    "area": area,
+                },
+                str(current_dataset),
+            )
 
     print("Surface-level variables downloaded!")
 
     for year in years_to_download:
-        client.retrieve(
-            "reanalysis-era5-pressure-levels",
-            {
-                "product_type": "reanalysis",
-                "variable": [
-                    "temperature",
-                    "u_component_of_wind",
-                    "v_component_of_wind",
-                    "specific_humidity",
-                    "geopotential",
-                ],
-                "pressure_level": [
-                    "50","100","150","200","250",
-                    "300","400","500","600","700",
-                    "850","925","1000",
-                ],
-                "year": year,
-                "month": ["01", "02", "03","04", "05", "06",
-                            "07", "08", "09","10", "11", "12"],
-                "day":  [ "01", "02", "03","04", "05", "06",
-                            "07", "08", "09","10", "11", "12",
-                            "13", "14", "15","16", "17", "18",
-                            "19", "20", "21","22", "23", "24",
-                            "25", "26", "27","28", "29", "30","31"],
-                "time": ["00:00", "06:00", "12:00", "18:00"],
-                "format": "netcdf",
-                "area": area,
-            },
-            str(download_path  / f"{dataset_name}-{year}-atmospheric.nc"),
-        )
+        
+        current_dataset = download_path  / f"{dataset_name}-{year}-atmospheric.nc"
+        
+        if not (current_dataset).exists():
+            client.retrieve(
+                "reanalysis-era5-pressure-levels",
+                {
+                    "product_type": "reanalysis",
+                    "variable": [
+                        "temperature",
+                        "u_component_of_wind",
+                        "v_component_of_wind",
+                        "specific_humidity",
+                        "geopotential",
+                    ],
+                    "pressure_level": [
+                        "50","100","150","200","250",
+                        "300","400","500","600","700",
+                        "850","925","1000",
+                    ],
+                    "year": year,
+                    "month": ["01", "02", "03","04", "05", "06",
+                                "07", "08", "09","10", "11", "12"],
+                    "day":  [ "01", "02", "03","04", "05", "06",
+                                "07", "08", "09","10", "11", "12",
+                                "13", "14", "15","16", "17", "18",
+                                "19", "20", "21","22", "23", "24",
+                                "25", "26", "27","28", "29", "30","31"],
+                    "time": ["00:00", "06:00", "12:00", "18:00"],
+                    "format": "netcdf",
+                    "area": area,
+                },
+                str(current_dataset),
+            )
+            
     print("Atmospheric variables downloaded!")
 
 def download_era5_static_data(area, path="data/raw/"):
