@@ -1,3 +1,6 @@
 secrets/*
 data/*
 env/
+src/__pycache__/*
+src/data/__pycache__/
+checkpoint/*
