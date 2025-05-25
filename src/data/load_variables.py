@@ -14,6 +14,7 @@ if current_working_dir != project_root:
 
 def load_brasil_surf_var(variables, 
                         start_end_dates= [[19610101,19801231], [19810101,20001231],  [20010101,20240320]],
+                        lat_lim=None,lon_lim=None,
                         n_samples = None):
     """
     Extracts and concatenates climate data for specified variables and date ranges.
@@ -56,15 +57,28 @@ def load_brasil_surf_var(variables,
                 raise FileNotFoundError(f"File not found: {file_path}")
             
             var_name = next(iter(cur_df.data_vars))
-            n_samples = n_samples if n_samples is not None else cur_df[var_name].shape[1]
-            data.append(cur_df[var_name][:n_samples].values)
+            
+            if lat_lim is not None and lon_lim is not None:
+                cur_df = cur_df.sel(latitude=slice(lat_lim[0], lat_lim[1]), longitude=slice(lon_lim[0], lon_lim[1]))
+
+            if n_samples is not None:
+                total_samples = cur_df[next(iter(cur_df.data_vars))].shape[0]
+                samples = np.linspace(0, total_samples - 1, n_samples, dtype=int)
+                cur_var = cur_df[var_name][samples].values
+            else:
+                cur_var = cur_df[var_name].values
+            data.append(cur_var)
             
             # if not len(metadata):
             #     metadata["lat"] = torch.from_numpy(cur_df['latitude'].values)
             #     metadata["lon"] = torch.from_numpy(cur_df['longitude'].values)
             
             if append_time:
-                time_list.append(cur_df['time'][:n_samples].values)
+                if n_samples is not None:
+                    cur_time = cur_df['time'][samples].values
+                else:
+                    cur_time = cur_df['time'].values
+                time_list.append(cur_time)
 
         append_time = False
         metadata["time"] = tuple(np.concatenate(time_list, axis=0))
@@ -87,7 +101,8 @@ def load_brasil_surf_var(variables,
 
 def load_era5_static_variables(variables, 
                                area=[5.3, -73.9, -33.9, -34.9],
-                               mask=None):
+                               mask=None,
+                               lat_lim=None, lon_lim=None):
     """
     Loads ERA5 variables from the downloaded NetCDF files.
     Parameters:
@@ -112,8 +127,12 @@ def load_era5_static_variables(variables,
             metadata['lat'] = torch.from_numpy(cur_var['latitude'].values)
             
         var_name = next(iter(cur_var.variables)) #get the variable name
+        
+        if lat_lim is not None and lon_lim is not None:
+            cur_var = cur_var.sel(latitude=slice(lat_lim[0], lat_lim[1]), longitude=slice(lon_lim[0], lon_lim[1]))
+
         cur_var =torch.from_numpy(cur_var[var_name][0].values)
-         
+            
         if mask is not None:
             cur_var = torch.where(mask == 1, cur_var, torch.nan)
            

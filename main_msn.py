@@ -16,14 +16,14 @@ from src.msn_train import main as msn
 
 from src.utils import init_distributed
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument(
-#     '--fname', type=str,
-#     help='name of config file to load',
-#     default='configs.yaml')
-# parser.add_argument(
-#     '--devices', type=str, nargs='+', default=['cuda:0'],
-#     help='which devices to use on local machine')
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    '--fname', type=str,
+    help='name of config file to load',
+    default='configs.yaml')
+parser.add_argument(
+    '--devices', type=str, nargs='+', default=['cuda:0'],
+    help='which devices to use on local machine')
 
 
 def process_main(rank, fname, world_size, devices):
@@ -48,7 +48,7 @@ def process_main(rank, fname, world_size, devices):
         pp = pprint.PrettyPrinter(indent=4)
         pp.pprint(params)
 
-    dump = os.path.join(params['logging']['folder'], 'params-msn-train.yaml')
+    dump = os.path.join(params['logging']['folder'], f"params-{params['logging']['write_tag']}.yaml")
     with open(dump, 'w') as f:
         yaml.dump(params, f)
 
@@ -59,12 +59,11 @@ def process_main(rank, fname, world_size, devices):
 
 
 if __name__ == '__main__':
-    # args = parser.parse_args()
-
-    # num_gpus = len(args.devices)
+    
+    args = parser.parse_args()
+    num_gpus = len(args.devices)
 
     mp.spawn(
         process_main,
-        nprocs=1, # num_gpus,
-        # args=(args.fname, num_gpus, args.devices))
-        args=( 'configs/surfweather.yaml', 1, 'cuda:0'))
+        nprocs=num_gpus,
+        args=(args.fname, num_gpus, args.devices))

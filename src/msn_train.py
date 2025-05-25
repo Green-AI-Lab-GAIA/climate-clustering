@@ -105,14 +105,20 @@ def main(args):
     label_smoothing = args['data']['label_smoothing']
     pin_mem = False if 'pin_mem' not in args['data'] else args['data']['pin_mem']
     num_workers = 1 if 'num_workers' not in args['data'] else args['data']['num_workers']
-    color_jitter = args['data']['color_jitter_strength']
+    norm_means = args['data']['norm_means']
+    norm_stds = args['data']['norm_stds']
     root_path = args['data']['root_path']
-    image_folder = args['data']['image_folder']
+    # image_folder = args['data']['image_folder']
     patch_drop = args['data']['patch_drop']
     rand_size = args['data']['rand_size']
     rand_views = args['data']['rand_views']
     focal_views = args['data']['focal_views']
     focal_size = args['data']['focal_size']
+    surf_vars = args['data']['surf_vars']
+    static_vars = args['data']['static_vars']
+    lat_lim = args['data']['lat_limit']
+    lon_lim = args['data']['lon_limit']
+    
     # --
 
     # -- OPTIMIZATION
@@ -137,6 +143,7 @@ def main(args):
 
     # -- init torch distributed backend
     world_size, rank = init_distributed()
+    
     logger.info(f'Initialized (rank/world-size) {rank}/{world_size}')
     # if rank > 0:
     #     logger.setLevel(logging.ERROR)
@@ -196,19 +203,24 @@ def main(args):
         focal_size=focal_size,
         rand_views=rand_views+1,
         focal_views=focal_views,
-        color_jitter=color_jitter)
+        norm_means=tuple(norm_means),
+        norm_stds=tuple(norm_stds),
+        )
 
     # -- init data-loaders/samplers
     (unsupervised_loader,
      unsupervised_sampler) = init_data(
          transform=transform,
          batch_size=batch_size,
+         surf_vars=surf_vars,
+         static_vars=static_vars,
+         lat_lim=lat_lim, lon_lim=lon_lim,
          pin_mem=pin_mem,
          num_workers=num_workers,
          world_size=world_size,
          rank=rank,
          root_path=root_path,
-         image_folder=image_folder,
+        #  image_folder=image_folder,
          training=True,
          copy_data=copy_data)
     ipe = len(unsupervised_loader)

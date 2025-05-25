@@ -28,16 +28,20 @@ logger = getLogger()
 def init_data(
     transform,
     batch_size,
+    surf_vars=['Tmax', 'Tmin', 'pr'],
+    static_vars=['slt', 'geo'],
+    lat_lim=None, lon_lim=None,
     pin_mem=True,
     num_workers=8,
     world_size=1,
     rank=0,
     root_path=None,
-    image_folder=None,
+    # image_folder=None,
     training=True,
     copy_data=False,
     drop_last=True,
-    subset_file=None
+    subset_file=None,
+    dataset_samples=None
 ):
 
     # dataset = ImageNet(
@@ -53,8 +57,11 @@ def init_data(
     # logger.info('ImageNet dataset created')
     
 
-    dataset = BrazilWeatherDataset(root=image_folder,
-                                    transform=transform)
+    dataset = BrazilWeatherDataset( transform=transform,
+                                    surf_vars=surf_vars,
+                                    static_vars=static_vars,
+                                    lat_lim=lat_lim, lon_lim=lon_lim,
+                                    n_samples=dataset_samples)
     
     dist_sampler = torch.utils.data.distributed.DistributedSampler(
         dataset=dataset,
@@ -69,7 +76,8 @@ def init_data(
         drop_last=drop_last,
         pin_memory=pin_mem,
         num_workers=num_workers)
-    logger.info('ImageNet unsupervised data loader created')
+    
+    logger.info('data loader created')
 
     return (data_loader, dist_sampler)
 
@@ -82,40 +90,43 @@ def make_transforms(
     color_jitter=1.0,
     rand_views=2,
     focal_views=10,
+    norm_means=None,
+    norm_stds=None
 ):
     # logger.info('making imagenet data transforms')
 
-    def get_color_distortion(s=1.0):
-        # s is the strength of color distortion.
-        color_jitter = transforms.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
-        rnd_color_jitter = transforms.RandomApply([color_jitter], p=0.8)
-        rnd_gray = transforms.RandomGrayscale(p=0.2)
-        color_distort = transforms.Compose([
-            rnd_color_jitter,
-            rnd_gray])
-        return color_distort
+    # def get_color_distortion(s=1.0):
+    #     # s is the strength of color distortion.
+    #     color_jitter = transforms.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+    #     rnd_color_jitter = transforms.RandomApply([color_jitter], p=0.8)
+    #     rnd_gray = transforms.RandomGrayscale(p=0.2)
+    #     color_distort = transforms.Compose([
+    #         rnd_color_jitter,
+    #         rnd_gray])
+    #     return color_distort
 
     rand_transform = transforms.Compose([
         transforms.RandomResizedCrop(rand_size, scale=rand_crop_scale),
-        transforms.RandomHorizontalFlip(),
+        # transforms.RandomHorizontalFlip(),
         # get_color_distortion(s=color_jitter),
         # GaussianBlur(p=0.5),
         # transforms.ToTensor(),
         transforms.Normalize(
-            (19.884, 30.663, 4.803, 0, -1.386496e03), #'Tmin', 'Tmax', 'pr', 'slt', 'geo'
-            (3.578, 3.613,  8.075, 7, 5.884467e04))
+            norm_means, #'Tmin', 'Tmax',
+            norm_stds)
     ])
 
     focal_transform = transforms.Compose([
         transforms.RandomResizedCrop(focal_size, scale=focal_crop_scale),
-        transforms.RandomHorizontalFlip(),
+        # transforms.RandomHorizontalFlip(),
         # get_color_distortion(s=color_jitter),
         # GaussianBlur(p=0.5),
         # transforms.ToTensor(),
         transforms.Normalize(
-            (19.884, 30.663, 4.803, 0, -1.386496e03), 
-            (3.578, 3.613,  8.075, 7, 5.884467e04))
+            norm_means, #'Tmin', 'Tmax',
+            norm_stds)
     ])
+
 
     transform = MultiViewTransform(
         rand_transform=rand_transform,
@@ -155,33 +166,47 @@ class MultiViewTransform(object):
 
 
 class BrazilWeatherDataset(torch.utils.data.Dataset):
-    def __init__(self, root, transform,patch_size=40, patch_stride=20):
-        self.root = root
+    def __init__(self, transform, surf_vars, static_vars=None, return_patches=False,
+                 patch_size=40, patch_stride=20, lat_lim=None, lon_lim=None,n_samples=None):
+        
+        # self.root = root
         self.transform = transform
 
-        self.imgs = self.load_images(patch_size=patch_size, patch_stride=patch_stride)
+        self.imgs = self.load_images(surf_vars, static_vars, return_patches=return_patches,
+                                     patch_size=patch_size, patch_stride=patch_stride,
+                                     lat_lim=lat_lim, lon_lim=lon_lim,n_samples=n_samples)
 
-    def load_images(self, patch_size, patch_stride):
+    def load_images(self, surf_vars, static_vars=None, return_patches=False,
+                    patch_size=None, patch_stride=None,
+                    lat_lim=None, lon_lim=None,n_samples=None):
 
-        surf_vars_values, time, mask = load_brasil_surf_var(['Tmin','Tmax','pr'],n_samples=100)
-        static_vars_values, lat, lon  = load_era5_static_variables(['slt','geo'],mask=mask)
-
-    
+        surf_vars_values, time, mask = load_brasil_surf_var(surf_vars,lat_lim=lat_lim,lon_lim=lon_lim,n_samples=n_samples) # ['Tmax','Tmin','pr']
+        
+        
+        
         x_surf = torch.stack(tuple(surf_vars_values.values()), dim=1)
-        x_static = torch.stack(tuple(static_vars_values.values()), dim=0)
+        
+        if static_vars is not None:
+            static_vars_values, lat, lon  = load_era5_static_variables(static_vars,mask=mask,lat_lim=lat_lim,lon_lim= lon_lim) #['slt','geo']
 
-        B, _, H, W = x_surf.shape
+            x_static = torch.stack(tuple(static_vars_values.values()), dim=0)
 
-        x_static = x_static.expand((B, -1, -1, -1))
-        x_surf = torch.cat((x_surf, x_static), dim=1)
+            B, _, H, W = x_surf.shape
 
-        _, V, _, _ = x_surf.shape
+            x_static = x_static.expand((B, -1, -1, -1))
+            x_surf = torch.cat((x_surf, x_static), dim=1)
 
-        patches = x_surf.unfold(2, patch_size,patch_stride).unfold(3, patch_size, patch_stride)
-        patches = patches.permute(0, 2, 3, 1, 4, 5).contiguous().view(-1, V, patch_size, patch_size)
-        patches = patches[~torch.isnan(patches).any(dim=(1, 2, 3))] #exclude nans (ocean)
+        if return_patches:
+            _, V, _, _ = x_surf.shape
 
-        return patches
+            patches = x_surf.unfold(2, patch_size,patch_stride).unfold(3, patch_size, patch_stride)
+            patches = patches.permute(0, 2, 3, 1, 4, 5).contiguous().view(-1, V, patch_size, patch_size)
+            patches = patches[~torch.isnan(patches).any(dim=(1, 2, 3))] #exclude nans (ocean)
+
+            return patches.float()
+        else:
+            self.time = time
+            return x_surf.float()
 
     def __getitem__(self, index):
 
