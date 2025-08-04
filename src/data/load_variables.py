@@ -6,6 +6,8 @@ import torch
 from pathlib import Path
 import os
 
+import pandas as pd
+
 project_root = Path(__file__).resolve().parent.parent.parent
 current_working_dir = Path.cwd().resolve()
 
@@ -15,7 +17,8 @@ if current_working_dir != project_root:
 def load_brasil_surf_var(variables, 
                         start_end_dates= [[19610101,19801231], [19810101,20001231],  [20010101,20240320]],
                         lat_lim=None,lon_lim=None,
-                        n_samples = None):
+                        n_samples = None,
+                        val_years=None):
     """
     Extracts and concatenates climate data for specified variables and date ranges.
 
@@ -95,7 +98,7 @@ def load_brasil_surf_var(variables,
         
     mask = vars[variables[0]][0]
     mask = torch.where(~torch.isnan(mask), 1,0)
-            
+                
     return vars, metadata["time"], mask
             
 

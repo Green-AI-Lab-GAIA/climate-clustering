@@ -77,7 +77,7 @@ def main(args):
     hidden_dim = args['meta']['hidden_dim']
     load_model = args['meta']['load_checkpoint']
     r_file = args['meta']['read_checkpoint']
-    copy_data = args['meta']['copy_data']
+    # copy_data = args['meta']['copy_data']
     use_pred_head = args['meta']['use_pred_head']
     use_bn = args['meta']['use_bn']
     drop_path_rate = args['meta']['drop_path_rate']
@@ -107,7 +107,7 @@ def main(args):
     num_workers = 1 if 'num_workers' not in args['data'] else args['data']['num_workers']
     norm_means = args['data']['norm_means']
     norm_stds = args['data']['norm_stds']
-    root_path = args['data']['root_path']
+    # root_path = args['data']['root_path']
     # image_folder = args['data']['image_folder']
     patch_drop = args['data']['patch_drop']
     rand_size = args['data']['rand_size']
@@ -118,6 +118,7 @@ def main(args):
     static_vars = args['data']['static_vars']
     lat_lim = args['data']['lat_limit']
     lon_lim = args['data']['lon_limit']
+    split_val = args['data']['split_val']
     
     # --
 
@@ -219,10 +220,12 @@ def main(args):
          num_workers=num_workers,
          world_size=world_size,
          rank=rank,
-         root_path=root_path,
+        #  root_path=root_path,
         #  image_folder=image_folder,
-         training=True,
-         copy_data=copy_data)
+        #  training=True,
+        #  copy_data=copy_data,
+         split_val=split_val
+         )
     ipe = len(unsupervised_loader)
     logger.info(f'iterations per epoch: {ipe}')
 
