@@ -15,6 +15,7 @@ import torchvision
 from src.data.load_variables import load_brasil_surf_var, load_era5_static_variables
 
 import numpy as np
+import pandas as pd
 
 _GLOBAL_SEED = 0
 logger = getLogger()
@@ -29,11 +30,6 @@ def init_data(
     num_workers=8,
     world_size=1,
     rank=0,
-    # root_path=None,
-    # image_folder=None,
-    # training=True,
-    # copy_data=False,
-    # subset_file=None,
     drop_last=True,
     dataset_samples=None,
     adj_prep_balance=True,
@@ -56,7 +52,6 @@ def init_data(
     data_loader = torch.utils.data.DataLoader(
         dataset,
         sampler=dist_sampler,
-        # shuffle=True,
         batch_size=batch_size,
         drop_last=drop_last,
         pin_memory=pin_mem,
@@ -100,6 +95,7 @@ def make_transforms(
         rand_views=rand_views,
         focal_views=focal_views
     )
+    
     return transform
 
 
@@ -130,18 +126,18 @@ class MultiViewTransform(object):
 
         return img_views
 
-import pandas as pd
+
 
 class BrazilWeatherDataset(torch.utils.data.Dataset):
     def __init__(self, transform, surf_vars, static_vars=None, return_patches=False,
                  patch_size=40, patch_stride=20, lat_lim=None, lon_lim=None,n_samples=None,adj_prep_balance=True,split_val=False):
         
-        # self.root = root
         self.transform = transform
 
         self.imgs, self.validation_imgs = self.load_images(surf_vars, static_vars, return_patches=return_patches,
                                      patch_size=patch_size, patch_stride=patch_stride,
                                      lat_lim=lat_lim, lon_lim=lon_lim,n_samples=n_samples,adj_prep_balance=adj_prep_balance,split_val=split_val)
+
 
     def load_images(self, surf_vars, static_vars, 
                     return_patches,patch_size, patch_stride,
@@ -153,6 +149,7 @@ class BrazilWeatherDataset(torch.utils.data.Dataset):
         x_surf = torch.stack(tuple(surf_vars_values.values()), dim=1)
         
         if static_vars is not None:
+            
             static_vars_values, lat, lon  = load_era5_static_variables(static_vars,mask=mask,lat_lim=lat_lim,lon_lim= lon_lim) #['slt','geo']
 
             x_static = torch.stack(tuple(static_vars_values.values()), dim=0)
@@ -162,7 +159,7 @@ class BrazilWeatherDataset(torch.utils.data.Dataset):
             x_static = x_static.expand((B, -1, -1, -1))
             x_surf = torch.cat((x_surf, x_static), dim=1)
         
-        if return_patches:
+        if return_patches: 
             _, V, _, _ = x_surf.shape
 
             patches = x_surf.unfold(2, patch_size,patch_stride).unfold(3, patch_size, patch_stride)
@@ -174,34 +171,47 @@ class BrazilWeatherDataset(torch.utils.data.Dataset):
         else:
             
             if split_val:
+                
                 times_index = pd.to_datetime(time)
                 val_indices = np.where(times_index.year.isin([1980, 2000]))[0]
                 train_indices = np.where(~times_index.year.isin([1980, 2000]))[0]
 
                 validation = x_surf[val_indices].float()
                 x_surf = x_surf[train_indices]
+
+                self.time = times_index[train_indices]
+                self.val_time = times_index[val_indices]
+                
             else:
                 validation = None
+                self.time = pd.to_datetime(time)
+                
                 
             if (surf_vars[0] == 'pr') and adj_prep_balance:
                 print("Adjusting precipitation balance...")
-                x_surf = self.adjust_prep_balance(x_surf, total_percnt=0.05, val_crop=5)
-                
-            else:
+                x_surf, time = self.adjust_prep_balance(x_surf, time, total_percnt=0.05, val_crop=5)
                 self.time = time
                 
             return x_surf.float(), validation
 
-    def adjust_prep_balance(self, data, total_percnt = 0.05,val_crop = 5):
+
+    def adjust_prep_balance(self, data, time, total_percnt = 0.05,val_crop = 5):
         
-        low_prep_samples = data[data.mean(dim=(1,2,3)) < val_crop]
-        other_samples = data[data.mean(dim=(1,2,3)) >= val_crop]
+        low_prep_samples = np.where(data.mean(dim=(1,2,3)) < val_crop)[0]
+        other_samples = np.where(data.mean(dim=(1,2,3)) >= val_crop)[0]
 
         n_samples = int((total_percnt*data.shape[0]) // 1)
         samples = np.linspace(0, low_prep_samples.shape[0] - 1, n_samples, dtype=int)
 
-        new_dataset = torch.cat((other_samples,low_prep_samples[samples]))
-        return new_dataset
+        new_dataset = torch.cat((data[other_samples],data[low_prep_samples[samples]]))
+        time_others, time_lowprep = np.array(time)[other_samples] , np.array(time)[low_prep_samples[samples]]
+        new_time = np.concatenate((time_others, time_lowprep))
+
+        sorted_time = pd.Series(new_time).sort_values()
+        new_dataset = new_dataset[sorted_time.index]
+        new_time = pd.to_datetime(sorted_time.values)
+        
+        return new_dataset, new_time
 
     def __getitem__(self, index):
 

@@ -1,0 +1,53 @@
+criterion:
+  ent_weight: 0.0
+  final_sharpen: 0.25
+  me_max: true
+  memax_weight: 1.0
+  num_proto: 15
+  start_sharpen: 0.25
+  temperature: 0.1
+  batch_size: 512
+  use_ent: false
+  use_sinkhorn: true
+data:
+  pin_mem: true
+  num_workers: 10
+  image_folder: null
+  label_smoothing: 0.0
+  patch_drop: 0.15
+  rand_size: 128
+  focal_size: 64
+  rand_views: 1
+  focal_views: 10
+  root_path: null
+  surf_vars: ['Tmin', 'Tmax']
+  static_vars: null
+  lat_limit: [-22.0, -7.0]
+  lon_limit: [-57.5, -43.0]
+  norm_means: [18.9116, 31.1490]
+  norm_stds: [3.2707, 3.2754]
+  split_val: true
+logging:
+  folder: checkpoint/msn-complete-br-data/
+  write_tag: temperature-exp-2-c15
+meta:
+  bottleneck: 1
+  copy_data: false
+  drop_path_rate: 0.0
+  hidden_dim: 2048
+  load_checkpoint: false
+  model_name: deit_small_temperature
+  output_dim: 128
+  read_checkpoint: null
+  use_bn: true
+  use_fp16: false
+  use_pred_head: false
+optimization:
+  clip_grad: 3.0
+  epochs: 300
+  final_lr: 1.0e-06
+  final_weight_decay: 0.4
+  lr: 0.001
+  start_lr: 0.0002
+  warmup: 15
+  weight_decay: 0.04

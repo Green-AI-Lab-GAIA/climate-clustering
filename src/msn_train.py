@@ -498,6 +498,7 @@ def init_model(
     hidden_dim=2048,
     output_dim=128,
     drop_path_rate=0.1,
+    log=True
 ):
 
     encoder = deit.__dict__[model_name](drop_path_rate=drop_path_rate)
@@ -527,7 +528,8 @@ def init_model(
             torch.nn.init.constant_(m.weight, 1.0)
 
     encoder.to(device)
-    logger.info(encoder)
+    if log:
+        logger.info(encoder)
     return encoder
 
 
@@ -575,42 +577,3 @@ def init_opt(
         final_wd=final_wd,
         T_max=int(1.25*num_epochs*iterations_per_epoch))
     return encoder, optimizer, scheduler, wd_scheduler
-
-
-if __name__ == "__main__":
-    # main()
-    
-    import pprint
-    import yaml
-
-    rank, fname, world_size, devices = 1, 'configs/surfweather.yaml', 1, 'cuda:0'
-
-    import os
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(devices[rank].split(':')[-1])
-
-    import logging
-    logging.basicConfig()
-    logger = logging.getLogger()
-    if rank == 0:
-        logger.setLevel(logging.INFO)
-    else:
-        logger.setLevel(logging.ERROR)
-
-    logger.info(f'called-params {fname}')
-
-    # -- load script params
-    params = None
-    with open(fname, 'r') as y_file:
-        params = yaml.load(y_file, Loader=yaml.FullLoader)
-        logger.info('loaded params...')
-        pp = pprint.PrettyPrinter(indent=4)
-        pp.pprint(params)
-
-    dump = os.path.join(params['logging']['folder'], 'params-msn-train.yaml')
-    with open(dump, 'w') as f:
-        yaml.dump(params, f)
-
-    world_size, rank = init_distributed(rank_and_world_size=(rank, world_size))
-    logger.info(f'Running... (rank: {rank}/{world_size})')
-
-    main(params) 

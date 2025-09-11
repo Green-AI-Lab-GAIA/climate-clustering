@@ -179,39 +179,40 @@ def download_brasil_data_from_onedrive(variables,start_end_dates):
             file =  f"{var}_{start}_{end}_BR-DWGD_UFES_UTEXAS_v_3.2.3.nc"
     
             sp.download_file(remote_path=f"Clima/Climate Clustering/Dados Entrada/{file}",
-                            local_path="data/raw/")
+                            local_path="data/raw/test/")
             
     
 if __name__ == "__main__":
     
 #     # Define the area for Brazil
-    area = [5.3, -73.9, -33.9, -34.9]  # [north, west, south, east]
+    # area = [5.3, -73.9, -33.9, -34.9]  # [north, west, south, east]
 
-    # years_to_download=[str(i) for i in range(1980, 2024)]
-    years_to_download = [  ['1990','1991', '1992', '1993', '1994','1995', '1996', '1997', '1998','1999'],
-                        ['2000', '2001','2002', '2003', '2004','2005', '2006', '2007', '2008', '2009'],
-                        ['2010','2011', '2012','2013', '2014','2015', '2016', '2017', '2018', '2019'],
-                        ['2020', '2021', '2022', '2023','2024']]
-     # ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987','1988', '1989'],
+    # # years_to_download=[str(i) for i in range(1980, 2024)]
+    # years_to_download = [  ['1990','1991', '1992', '1993', '1994','1995', '1996', '1997', '1998','1999'],
+    #                     ['2000', '2001','2002', '2003', '2004','2005', '2006', '2007', '2008', '2009'],
+    #                     ['2010','2011', '2012','2013', '2014','2015', '2016', '2017', '2018', '2019'],
+    #                     ['2020', '2021', '2022', '2023','2024']]
+    #  # ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987','1988', '1989'],
 
-    download_era5_data(dataset_name="brasil",
-                    area=area,
-                    path="data/raw/era5/",
-                    years_to_download=years_to_download)
+    # download_era5_data(dataset_name="brasil",
+    #                 area=area,
+    #                 path="data/raw/era5/",
+    #                 years_to_download=years_to_download)
 
 
 #     # Download ERA5 data
 #     download_era5_static_data(area)
     
 #     # Define the variables and date ranges for Brasil data
-#     variables = ["pr", "Tmin", "Tmax"]
-#     start_end_dates = [
-#         [19610101, 19801231],
-#         [19810101, 20001231],
-#         [20010101, 20240320]
-#     ]
+    variables = ["pr", ]
+    # "Tmin", "Tmax"]
+    start_end_dates = [
+        [19610101, 19801231],
+        # [19810101, 20001231],
+        # [20010101, 20240320]
+    ]
     
 #     # Download Brasil data from OneDrive
-#     download_brasil_data_from_onedrive(variables, start_end_dates)  
+    download_brasil_data_from_onedrive(variables, start_end_dates)  
 
 
