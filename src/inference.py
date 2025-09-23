@@ -8,7 +8,7 @@ from tqdm import tqdm
 import torchvision.transforms as transforms
 # from torchvision.transforms import v2
 from sklearn.manifold import TSNE
-
+from sklearn.decomposition import PCA
 from src.data_manager import init_data
 from src.msn_train import init_model
 
@@ -143,3 +143,31 @@ def get_TSNE(read_path, validation=True, **kwargs):
     
     return tsne_E, tsne_prot, tsne_Eval
 
+def get_pca(read_path, validation=True, **kwargs):
+    
+    try:
+        pca_E = torch.load(os.path.join(read_path, 'pca_E.pt'),weights_only=False)
+        pca_prot = torch.load(os.path.join(read_path, 'pca_prot.pt'),weights_only=False)
+
+        if validation:
+            pca_Eval = torch.load(os.path.join(read_path, 'pca_Eval.pt'),weights_only=False)
+    
+    except:       
+        features_shape = kwargs['E'].shape[0]
+        prot_shape = kwargs['prot'].shape[0]
+            
+        latent_data = torch.cat(list(kwargs.values()))
+        
+        pca = PCA(n_components=2).fit_transform(latent_data)
+        
+        pca_E = pca[:features_shape]
+        pca_prot = pca[features_shape:features_shape+prot_shape]
+
+        torch.save(pca_E, os.path.join(read_path,'pca_E.pt'))
+        torch.save(pca_prot, os.path.join(read_path,'pca_prot.pt'))
+        
+        if validation:
+            pca_Eval = pca[features_shape+prot_shape:]
+            torch.save(pca_Eval, os.path.join(read_path,'pca_Eval.pt'))
+            
+    return pca_E, pca_prot, pca_Eval
