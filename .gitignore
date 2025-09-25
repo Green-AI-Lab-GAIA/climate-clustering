@@ -3,3 +3,5 @@ data/*
 env/
 checkpoint
 **/__pycache__/
+pesos.zip
+*.pyc
