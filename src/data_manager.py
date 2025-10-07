@@ -130,7 +130,8 @@ class MultiViewTransform(object):
 
 class BrazilWeatherDataset(torch.utils.data.Dataset):
     def __init__(self, transform, surf_vars, static_vars=None, return_patches=False,
-                 patch_size=40, patch_stride=20, lat_lim=None, lon_lim=None,n_samples=None,adj_prep_balance=True,split_val=False):
+                 patch_size=40, patch_stride=20, lat_lim=None, lon_lim=None,n_samples=None,adj_prep_balance=True,split_val=False,
+                 return_time_period=False):
         
         self.transform = transform
 
@@ -138,6 +139,7 @@ class BrazilWeatherDataset(torch.utils.data.Dataset):
                                      patch_size=patch_size, patch_stride=patch_stride,
                                      lat_lim=lat_lim, lon_lim=lon_lim,n_samples=n_samples,adj_prep_balance=adj_prep_balance,split_val=split_val)
 
+        self.return_time_period = return_time_period
 
     def load_images(self, surf_vars, static_vars, 
                     return_patches,patch_size, patch_stride,
@@ -218,7 +220,10 @@ class BrazilWeatherDataset(torch.utils.data.Dataset):
         cimg = self.imgs[index]
         timg = self.transform(cimg)
 
-        return timg, torch.tensor(-1)
+        if self.return_time_period:
+            return timg, torch.tensor(self.time[index].to_period('M').ordinal)
+        else:
+            return timg, torch.tensor(-1)
 
     def __len__(self):
         return self.imgs.shape[0]
