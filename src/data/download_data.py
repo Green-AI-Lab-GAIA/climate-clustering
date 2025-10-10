@@ -128,41 +128,42 @@ def download_era5_surface(dataset_name, area, path="data/raw/era5/",years_to_dow
                                                                                                         "10m_v_component_of_wind",
                                                                                                         "mean_sea_level_pressure"]):
 
-    # os.mkdir(path, exist_ok=True)
-    download_path = Path(path)
-
     client = cdsapi.Client(
         url="https://cds.climate.copernicus.eu/api",
         key="b0474ce3-c4ed-4747-b666-66dcca14d8ea"
     )
     
-    current_dataset = download_path  / f"{dataset_name}-static.grib"
-
     for year_list in years_to_download:
 
         start, end = year_list[0], year_list[-1]
-        current_dataset = download_path  / f"{dataset_name}-{start}-{end}-surface-level.grib"
 
-        if not (current_dataset).exists():
-            client.retrieve(
-                "reanalysis-era5-single-levels",
-                {
-                    "product_type": "reanalysis",
-                    "variable":variables,
-                    "year": year_list,
-                    "month": ["01", "02", "03","04", "05", "06",
-                                "07", "08", "09","10", "11", "12"],
-                    "day":  [ "01", "02", "03","04", "05", "06",
-                                "07", "08", "09","10", "11", "12",
-                                "13", "14", "15","16", "17", "18",
-                                "19", "20", "21","22", "23", "24",
-                                "25", "26", "27","28", "29", "30","31"],
-                    "time": ["00:00", "06:00", "12:00", "18:00"],
-                    "format": "grib",
-                    "area": area,
-                },
-                str(current_dataset),
-            )
+        filename = client.retrieve(
+            "reanalysis-era5-single-levels",
+            {
+                "product_type": "reanalysis",
+                "variable":variables,
+                "year": years_to_download,
+                "month": ["01", "02", "03","04", "05", "06",
+                            "07", "08", "09","10", "11", "12"],
+                "day":  [ "01", "02", "03","04", "05", "06",
+                            "07", "08", "09","10", "11", "12",
+                            "13", "14", "15","16", "17", "18",
+                            "19", "20", "21","22", "23", "24",
+                            "25", "26", "27","28", "29", "30","31"],
+                "time": ["00:00", "06:00", "12:00", "18:00"],
+                "data_format": "netcdf",
+                "download_format": "zip",
+                "area": area,
+                    }
+            ).download()
+
+        os.system(f"unzip {filename} -d {path}")
+        os.system(f"rm {filename}")
+    
+        new_files = [i for i in os.listdir(path) if i.endswith(".nc")]
+        for file in new_files:     #rename files 
+            new_name = f"{start}-{end}-{file.split('-')[-1]}"
+            os.rename(os.path.join(path, file), os.path.join(path, new_name))
 
         print("Surface-level variables downloaded for years:", year_list)
 
@@ -237,19 +238,19 @@ if __name__ == "__main__":
     area = [5.3, -73.9, -33.9, -34.9]  # [north, west, south, east]
 
     # years_to_download=[str(i) for i in range(1980, 2024)]
-    years_to_download = [  ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987','1988', '1989'],
-                        ['1990','1991', '1992', '1993', '1994','1995', '1996', '1997', '1998','1999'],
-                        ['2000', '2001','2002', '2003', '2004','2005', '2006', '2007', '2008', '2009'],
-                        ['2010','2011', '2012','2013', '2014','2015', '2016', '2017', '2018', '2019'],
+    years_to_download = [  
+                        # ['1980', '1981', '1982', '1983', '1984',], ['1985', '1986', '1987','1988', '1989'],
+                        # ['1990','1991', '1992', '1993', '1994',], ['1995', '1996', '1997', '1998','1999'],
+                        # ['2000', '2001','2002', '2003', '2004',], ['2005', '2006', '2007', '2008', '2009'],
+                        ['2010','2011', '2012','2013', '2014'], ['2015', '2016', '2017', '2018', '2019'],
                         ['2020', '2021', '2022', '2023','2024']]
-     # 
+    
 
     download_era5_surface(dataset_name="brasil",
                         area=area,
                         path="data/raw/era5/",
-                        years_to_download=years_to_download,
-                        variables=[ "2m_dewpoint_temperature",
-                                "2m_temperature",
+                        years_to_download=[years_to_download],
+                        variables=[ "2m_temperature",
                                 "total_precipitation"
                             ])
 
