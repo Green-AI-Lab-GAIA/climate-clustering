@@ -12,9 +12,9 @@ from sklearn.decomposition import PCA
 from src.data_manager import init_data
 from src.msn_train import init_model
 
-def read_data(directory,config_file,validation=True):
-    
-    with open(os.path.join(directory, config_file), 'r') as y_file:
+def read_data(config_file, validation=True):
+
+    with open(config_file, 'r') as y_file:
         params = yaml.load(y_file, Loader=yaml.FullLoader)
     
     rand_transform = transforms.Compose([
@@ -40,7 +40,7 @@ def read_data(directory,config_file,validation=True):
     
     return params, unsupervised_loader.dataset
 
-def load_model(params):
+def load_model(params,best=True):
         
     target_encoder = init_model(
         device = "cuda:0",
@@ -52,7 +52,12 @@ def load_model(params):
         log=False
     )
 
-    latest_checkpoint = os.path.join(params['logging']['folder'], params['logging']['write_tag'] + "-latest.pth.tar")
+    if best:
+        model_suffix ='-epbest.pth.tar'
+    else:
+        model_suffix = '-latest.pth.tar'
+
+    latest_checkpoint = os.path.join(params['logging']['folder'], params['logging']['write_tag'] + model_suffix)
     checkpoint = torch.load(latest_checkpoint, map_location='cpu',weights_only=False)
 
     target_encoder.load_state_dict(checkpoint['target_encoder'], strict=False)
