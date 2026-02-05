@@ -2,10 +2,8 @@
 import xarray as xr
 import numpy as np 
 import torch 
-
 from pathlib import Path
 import os
-
 import pandas as pd
 
 project_root = Path(__file__).resolve().parent.parent.parent
@@ -52,7 +50,7 @@ def load_brasil_surf_var(variables,
 
         for start, end in start_end_dates:
             
-            file_path = f"data/raw/{var}_{start}_{end}_BR-DWGD_UFES_UTEXAS_v_3.2.3.nc"
+            file_path = f"../data/raw/{var}_{start}_{end}_BR-DWGD_UFES_UTEXAS_v_3.2.3.nc"
             
             try:
                 cur_df = xr.open_dataset(file_path, engine="netcdf4")
@@ -122,7 +120,7 @@ def load_era5_static_variables(variables,
     
     for var in variables:
         
-        file_path = f"data/raw/{var}.area-subset.{area[0]}.{area[3]}.{area[2]}.{area[1]}.nc"
+        file_path = f"../data/raw/{var}.area-subset.{area[0]}.{area[3]}.{area[2]}.{area[1]}.nc"
         cur_var = xr.open_dataset(file_path, engine="netcdf4")
         
         if not len(metadata): 
