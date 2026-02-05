@@ -9,8 +9,12 @@ import torchvision.transforms as transforms
 # from torchvision.transforms import v2
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+import umap
+
 from src.data_manager import init_data
 from src.msn_train import init_model
+
+
 
 def read_data(config_file, validation=True):
 
@@ -126,6 +130,8 @@ def get_TSNE(read_path, validation=True, **kwargs):
         
         if validation:
             tsne_Eval = torch.load(os.path.join(read_path, 'tsne_Eval.pt'),weights_only=False)
+        else:
+            tsne_Eval = None
             
     except:
         
@@ -145,6 +151,8 @@ def get_TSNE(read_path, validation=True, **kwargs):
         if validation:
             tsne_Eval = tsne[features_shape+prot_shape:]
             torch.save(tsne_Eval, os.path.join(read_path,'tsne_Eval.pt'))
+        else:
+            tsne_Eval = None
     
     return tsne_E, tsne_prot, tsne_Eval
 
@@ -176,3 +184,67 @@ def get_pca(read_path, validation=True, **kwargs):
             torch.save(pca_Eval, os.path.join(read_path,'pca_Eval.pt'))
             
     return pca_E, pca_prot, pca_Eval
+
+
+
+def get_UMAP(read_path, validation=True, **kwargs):
+    """
+    Compute or load cached UMAP embeddings for latent space.
+
+        Example:
+        umap_E, umap_prot, umap_Eval = get_UMAP(
+            "results/",
+            E=E, prot=prot, E_val=E_val,
+            n_neighbors=15, min_dist=0.1
+        )
+    """
+
+    # Cached filenames (parallel to TSNE file naming logic)
+    fn_E      = os.path.join(read_path, 'umap_E.pt')
+    fn_prot   = os.path.join(read_path, 'umap_prot.pt')
+    fn_Eval   = os.path.join(read_path, 'umap_Eval.pt')
+
+    try:
+        umap_E = torch.load(fn_E, weights_only=False)
+        umap_prot = torch.load(fn_prot, weights_only=False)
+
+        if validation:
+            umap_Eval = torch.load(fn_Eval, weights_only=False)
+        else:
+            umap_Eval = None
+
+    except:
+
+        # ---- Compute embeddings ----
+        latent_data = torch.cat([kwargs['E'], kwargs['prot']])
+
+        features_shape = kwargs['E'].shape[0]
+        prot_shape = kwargs['prot'].shape[0]
+
+        # Default UMAP hyperparameters but allow override through kwargs
+        reducer = umap.UMAP(
+                n_neighbors=15, 
+                min_dist=0.1, 
+                n_components=2, 
+                metric='euclidean',
+                random_state=42
+            )
+
+        umap_out = reducer.fit_transform(latent_data)
+
+        # ---- Split results ----
+        umap_E = torch.tensor(umap_out[:features_shape])
+        umap_prot = torch.tensor(umap_out[features_shape:features_shape+prot_shape])
+
+        # ---- Save ----
+        torch.save(umap_E, fn_E)
+        torch.save(umap_prot, fn_prot)
+
+        if validation:
+            umap_Eval = reducer.fit(kwargs['E_val'])
+            umap_Eval = torch.tensor(umap_Eval)
+            torch.save(umap_Eval, fn_Eval)
+        else:
+            umap_Eval = None
+
+    return umap_E, umap_prot, umap_Eval
