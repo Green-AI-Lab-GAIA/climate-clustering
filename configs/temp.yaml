@@ -28,8 +28,8 @@ data:
   norm_stds: [3.2707, 3.2754]
   split_val: true
 logging:
-  folder: checkpoint/msn-complete-br-data/
-  write_tag: temperature-exp-2-c15
+  folder: checkpoint/temperature-run2/
+  write_tag: temperature-exp-2
 meta:
   bottleneck: 1
   copy_data: false
