@@ -4,3 +4,4 @@ checkpoint
 **/__pycache__/
 *.pyc
 !checkpoint/temperature-run2/temperature-exp-2-c30-latest.pth.tar
+base_models
