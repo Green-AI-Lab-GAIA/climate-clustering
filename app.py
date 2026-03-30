@@ -19,7 +19,7 @@ st.set_page_config(page_title="Climate Teleconnections", layout="wide")
 st.title("Climate Regimes & ENSO Teleconnections")
 
 # ── Data loading (cached) ───────────────────────────────────────────────────
-CONFIG_DIR = "checkpoint/temperature_only"
+CONFIG_DIR = "checkpoint/temperature-run2"
 RESULTS_DIR = "results"
 
 config_files = [f for f in os.listdir(CONFIG_DIR) if f.endswith(".yaml")]

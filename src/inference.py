@@ -44,7 +44,7 @@ def read_data(config_file, validation=True):
     
     return params, unsupervised_loader.dataset
 
-def load_model(params,best=True):
+def load_model(params,model_suffix=None):
         
     target_encoder = init_model(
         device = "cuda:0",
@@ -56,9 +56,7 @@ def load_model(params,best=True):
         log=False
     )
 
-    if best:
-        model_suffix ='-epbest.pth.tar'
-    else:
+    if not model_suffix:
         model_suffix = '-latest.pth.tar'
 
     latest_checkpoint = os.path.join(params['logging']['folder'], params['logging']['write_tag'] + model_suffix)

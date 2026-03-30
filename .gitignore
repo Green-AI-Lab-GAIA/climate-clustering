@@ -2,5 +2,5 @@ secrets/*
 ./venv/
 checkpoint
 **/__pycache__/
-pesos.zip
 *.pyc
+!checkpoint/temperature-run2/temperature-exp-2-c30-latest.pth.tar
