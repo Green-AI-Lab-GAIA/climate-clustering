@@ -89,28 +89,26 @@ def load_all(config_file, save_path, validation):
 
 
 @st.cache_data(show_spinner="Loading ONI index...")
-def load_oni():
-    import src.el_nino as _el_nino
-    original_fn = _el_nino.read_enso_data
+def load_oni(path=None):
+    import os
+    from src.el_nino import read_enso_data
 
-    def _patched():
-        import pandas as _pd
-        _orig_read = _pd.read_excel
-        def _read_xl(path, *a, **kw):
-            if 'oni_index' in str(path) and not os.path.exists(path):
-                for candidate in ['../data/oni_index.xlsx', 'data/oni_index.xlsx',
-                                  os.path.join(os.path.dirname(__file__), '..', 'data', 'oni_index.xlsx')]:
-                    if os.path.exists(candidate):
-                        path = candidate
-                        break
-            return _orig_read(path, *a, **kw)
-        _pd.read_excel = _read_xl
-        try:
-            return original_fn()
-        finally:
-            _pd.read_excel = _orig_read
+    if path is None:
+        candidates = [
+            '../data/oni_index.xlsx',
+            'data/oni_index.xlsx',
+            os.path.join(os.path.dirname(__file__), '..', 'data', 'oni_index.xlsx')
+        ]
 
-    return _patched()
+        for candidate in candidates:
+            if os.path.exists(candidate):
+                path = candidate
+                break
+
+    if path is None or not os.path.exists(path):
+        raise FileNotFoundError("ONI index file not found in expected locations.")
+
+    return read_enso_data(path)
 
 
 # ── Load ─────────────────────────────────────────────────────────────────────
@@ -175,8 +173,8 @@ df_el_nino = df.merge(oni_index, left_on='date_period', right_index=True, how='l
 df_el_nino['month'] = df_el_nino['date'].dt.month
 df_el_nino['year'] = df_el_nino['date'].dt.year
 df_el_nino['season'] = df['season']
-for vi, vname in enumerate(vars_names):
-    df_el_nino[f'Average {vname}'] = df[f'Average {vname}']
+# for vi, vname in enumerate(vars_names):
+#     df_el_nino[f'Average {vname}'] = df[f'Average {vname}']
 
 # ═════════════════════════════════════════════════════════════════════════════
 # SIDEBAR
@@ -185,7 +183,7 @@ for vi, vname in enumerate(vars_names):
 st.sidebar.header("Navigation")
 
 page = st.sidebar.radio(
-    "Page", ["ENSO Teleconnections", "Exploration", "Time Series"], key="page_nav"
+    "Page", ["Climate Regimes Exploration", "ENSO Teleconnections",  "Time Series"], key="page_nav"
 )
 
 st.sidebar.markdown("---")
@@ -249,7 +247,6 @@ def compute_anomaly_bar(df_enso, mode):
         )
         title = "P(k | El Nino) - P(k | Climatology)"
     return anomaly, title
-
 
 def compute_lagged_anomalies(df_base, oni_index, mode):
     """Compute lagged anomalies across lags -12 to 12."""
@@ -328,6 +325,98 @@ def get_top_80_clusters(df_cond):
         if cum_val >= 0.8:
             break
     return top_clusters, dist
+
+
+@st.cache_data(show_spinner="Computing quantile deviations...")
+def compute_quantile_deviations(_combined_dataset, _df_cluster_ids, _grupos_map_season, _nvars, n_quantiles=200):
+    """Compute quantile deviations for all season groups. Returns dict of season -> list of traces data."""
+    q = np.linspace(0.01, 0.99, n_quantiles)
+    result = {}
+    for season_name, group in _grupos_map_season.items():
+        season_data = []
+        for var in range(_nvars):
+            global_data = _combined_dataset[:, var, :, :].ravel().numpy()
+            global_q = np.quantile(global_data, q)
+            for g in group:
+                idx = _df_cluster_ids[_df_cluster_ids == g].index.values
+                data = _combined_dataset[:, var, :, :][idx].ravel().numpy()
+                qg = np.quantile(data, q)
+                season_data.append({
+                    'var': var, 'cluster': g,
+                    'q': q.tolist(), 'delta': (qg - global_q).tolist(),
+                })
+        result[season_name] = season_data
+    return result
+
+
+@st.cache_data(show_spinner="Computing monthly frequencies...")
+def compute_monthly_freq(_df_month, _df_cluster_id):
+    """Compute monthly frequency crosstab."""
+    return pd.crosstab(_df_month, _df_cluster_id, normalize='index') * 100
+
+
+@st.cache_data(show_spinner="Computing windowed anomalies...")
+def compute_windowed_anomalies(_df_el_nino_years, _df_el_nino_labels, _df_el_nino_clusters, min_yr, max_yr, window_size, mode):
+    """Compute anomalies per time window."""
+    all_vals = []
+    window_labels = []
+    for start_yr in range(min_yr, max_yr, window_size):
+        mask = (_df_el_nino_years >= start_yr) & (_df_el_nino_years < start_yr + window_size)
+        cur_labels = _df_el_nino_labels[mask]
+        cur_clusters = _df_el_nino_clusters[mask]
+        if len(cur_labels) == 0:
+            continue
+
+        if mode == "ENSO Regimes (Nino vs Neutral)":
+            cp = pd.crosstab(cur_labels, cur_clusters, normalize='index') * 100
+            if not {"El Niño", "Neutro"}.issubset(cp.index):
+                continue
+            anomaly = cp.loc["El Niño"] - cp.loc["Neutro"]
+        else:
+            p_clim = cur_clusters.value_counts(normalize=True) * 100
+            nino_mask = cur_labels == 'El Niño'
+            if nino_mask.sum() == 0:
+                continue
+            p_nino = cur_clusters[nino_mask].value_counts(normalize=True) * 100
+            all_c = sorted(cur_clusters.unique())
+            anomaly = pd.Series([p_nino.get(c, 0) - p_clim.get(c, 0) for c in all_c], index=all_c)
+
+        all_vals.append(anomaly)
+        cur_years = _df_el_nino_years[mask]
+        end_yr = min(start_yr + window_size - 1, int(cur_years.max()))
+        window_labels.append(f"{start_yr}-{end_yr}")
+
+    if not all_vals:
+        return None
+    return pd.DataFrame(all_vals, index=window_labels)
+
+
+@st.cache_data(show_spinner="Computing epoch comparison...")
+def compute_epoch_comparison(_df_years, _df_labels, _df_clusters, cutoff_year, mode):
+    """Compute epoch-based anomaly comparison."""
+    all_clusters_sorted = sorted(_df_clusters.unique())
+    epochs = {
+        f"Past (<={cutoff_year})": _df_years <= cutoff_year,
+        f"Present (>{cutoff_year})": _df_years > cutoff_year,
+    }
+    results = []
+    for epoch_name, mask in epochs.items():
+        epoch_clusters = _df_clusters[mask]
+        epoch_labels = _df_labels[mask]
+
+        if mode == "ENSO Regimes (Nino vs Neutral)":
+            p_base = epoch_clusters[epoch_labels == 'Neutro'].value_counts(normalize=True)
+        else:
+            p_base = epoch_clusters.value_counts(normalize=True)
+
+        p_nino = epoch_clusters[epoch_labels == 'El Niño'].value_counts(normalize=True)
+
+        for cluster in all_clusters_sorted:
+            results.append({
+                'Epoch': epoch_name, 'Cluster': cluster,
+                'Delta_P': p_nino.get(cluster, 0) - p_base.get(cluster, 0),
+            })
+    return pd.DataFrame(results)
 
 
 def compute_all_clusters_heatmap(df_base, oni_index, mode, lag):
@@ -441,34 +530,29 @@ if page == "Exploration":
     # ── Quantile Deviation ───────────────────────────────────────────────────
     st.header("Quantile Deviation per Season Group")
 
-    q = np.linspace(0.01, 0.99, 200)
-    linestyles = ['solid', 'dash', 'dot', 'dashdot']
+    quantile_data = compute_quantile_deviations(
+        combined_dataset, df['cluster_id'], grupos_map_season, nvars
+    )
 
+    linestyles = ['solid', 'dash', 'dot', 'dashdot']
     cols_q = st.columns(2)
     for ax_id, (season_name, group) in enumerate(grupos_map_season.items()):
         with cols_q[ax_id % 2]:
             fig_q = go.Figure()
             palette = sns.color_palette("bright", n_colors=len(group))
 
-            for var in range(nvars):
-                global_data = combined_dataset[:, var, :, :].ravel().numpy()
-                global_q = np.quantile(global_data, q)
+            for trace in quantile_data[season_name]:
+                gi = group.index(trace['cluster'])
+                color_rgb = palette[gi]
+                color_str = f"rgb({int(color_rgb[0]*255)},{int(color_rgb[1]*255)},{int(color_rgb[2]*255)})"
+                fig_q.add_trace(go.Scatter(
+                    x=trace['q'], y=trace['delta'],
+                    mode='lines', name=f"C{trace['cluster']}" if trace['var'] == 0 else None,
+                    line=dict(color=color_str, dash=linestyles[trace['var'] % len(linestyles)]),
+                    opacity=0.6, showlegend=(trace['var'] == 0),
+                    legendgroup=str(trace['cluster']),
+                ))
 
-                for gi, g in enumerate(group):
-                    idx = df[df['cluster_id'] == g].index.values
-                    data = combined_dataset[:, var, :, :][idx].ravel().numpy()
-                    qg = np.quantile(data, q)
-                    color_rgb = palette[gi]
-                    color_str = f"rgb({int(color_rgb[0]*255)},{int(color_rgb[1]*255)},{int(color_rgb[2]*255)})"
-                    fig_q.add_trace(go.Scatter(
-                        x=q, y=qg - global_q,
-                        mode='lines', name=f"C{g}" if var == 0 else None,
-                        line=dict(color=color_str, dash=linestyles[var % len(linestyles)]),
-                        opacity=0.6, showlegend=(var == 0),
-                        legendgroup=str(g),
-                    ))
-
-            # Add invisible traces for variable linestyle legend
             for var in range(nvars):
                 fig_q.add_trace(go.Scatter(
                     x=[None], y=[None], mode='lines',
@@ -488,7 +572,7 @@ if page == "Exploration":
     # ── Monthly Frequency Distribution ───────────────────────────────────────
     st.header("Monthly Frequency Distribution")
 
-    month_freq = pd.crosstab(df['month'], df['cluster_id'], normalize='index') * 100
+    month_freq = compute_monthly_freq(df['month'], df['cluster_id'])
 
     cols_mf = st.columns(2)
     for ax_id, (season_name, group) in enumerate(grupos_map_season.items()):
@@ -587,42 +671,14 @@ if page == "Time Series":
     min_yr = int(df_el_nino['year'].min())
     max_yr = int(df_el_nino['year'].max())
 
-    all_vals = []
-    window_labels = []
+    df_anomaly_time = compute_windowed_anomalies(
+        df_el_nino['year'], df_el_nino['Label'], df_el_nino['cluster_id'],
+        min_yr, max_yr, window_size, mode_label_ts,
+    )
 
-    for start_yr in range(min_yr, max_yr, window_size):
-        cur_df = df_el_nino[
-            (df_el_nino['year'] >= start_yr) &
-            (df_el_nino['year'] < start_yr + window_size)
-        ]
-        if len(cur_df) == 0:
-            continue
-
-        if mode_label_ts == "ENSO Regimes (Nino vs Neutral)":
-            cp = pd.crosstab(cur_df['Label'], cur_df['cluster_id'], normalize='index') * 100
-            if not {"El Niño", "Neutro"}.issubset(cp.index):
-                continue
-            anomaly = cp.loc["El Niño"] - cp.loc["Neutro"]
-        else:
-            p_clim = cur_df['cluster_id'].value_counts(normalize=True) * 100
-            df_nino_w = cur_df[cur_df['Label'] == 'El Niño']
-            if df_nino_w.empty:
-                continue
-            p_nino = df_nino_w['cluster_id'].value_counts(normalize=True) * 100
-            all_c = sorted(cur_df['cluster_id'].unique())
-            anomaly = pd.Series(
-                [p_nino.get(c, 0) - p_clim.get(c, 0) for c in all_c],
-                index=all_c,
-            )
-
-        all_vals.append(anomaly)
-        end_yr = min(start_yr + window_size - 1, int(cur_df['year'].max()))
-        window_labels.append(f"{start_yr}-{end_yr}")
-
-    if not all_vals:
+    if df_anomaly_time is None:
         st.warning("Not enough data for windowed analysis.")
     else:
-        df_anomaly_time = pd.DataFrame(all_vals, index=window_labels)
 
         n_windows = len(df_anomaly_time)
         n_grid_cols = min(3, n_windows)
@@ -664,27 +720,10 @@ if page == "Time Series":
 
     cutoff_year = st.slider("Epoch cutoff year", min_yr + 5, max_yr - 5, 2000, key="epoch_cutoff")
 
-    df_epoch = df_el_nino.copy()
-    df_epoch['Epoch'] = df_epoch['year'].apply(
-        lambda y: f"Past (<={cutoff_year})" if y <= cutoff_year else f"Present (>{cutoff_year})"
+    df_epochs = compute_epoch_comparison(
+        df_el_nino['year'], df_el_nino['Label'], df_el_nino['cluster_id'],
+        cutoff_year, mode_label_ts,
     )
-
-    epoch_results = []
-    for epoch in sorted(df_epoch['Epoch'].unique()):
-        de = df_epoch[df_epoch['Epoch'] == epoch]
-
-        if mode_label_ts == "ENSO Regimes (Nino vs Neutral)":
-            p_base = de[de['Label'] == 'Neutro']['cluster_id'].value_counts(normalize=True)
-        else:
-            p_base = de['cluster_id'].value_counts(normalize=True)
-
-        p_nino = de[de['Label'] == 'El Niño']['cluster_id'].value_counts(normalize=True)
-
-        for cluster in sorted(df_epoch['cluster_id'].unique()):
-            anom_val = p_nino.get(cluster, 0) - p_base.get(cluster, 0)
-            epoch_results.append({'Epoch': epoch, 'Cluster': cluster, 'Delta_P': anom_val})
-
-    df_epochs = pd.DataFrame(epoch_results)
 
     fig_epoch = px.bar(
         df_epochs, x='Cluster', y='Delta_P', color='Epoch',
